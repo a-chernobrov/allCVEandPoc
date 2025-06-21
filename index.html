@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVE Vulnerabilities</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>CVE Vulnerabilities</h1>
+        <h2 id="total-cve"></h2>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search...">
+            <button id="add-button">Добавить</button>
+        </div>
+        <table id="cve-table">
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>CVE ID</th>
+                    <th>Description</th>
+                    <th>Links Count</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div class="pagination">
+            <button id="prev-page">Previous</button>
+            <span id="page-info"></span>
+            <button id="next-page">Next</button>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 id="modal-cve-id"></h2>
+            <div id="details-content"></div>
+        </div>
+    </div>
+
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-add-button">&times;</span>
+            <h2>Add New CVE</h2>
+            <form id="add-cve-form">
+                <label for="cve-id-input">CVE ID:</label>
+                <input type="text" id="cve-id-input" required>
+                <label for="year-input">Year:</label>
+                <input type="number" id="year-input" required>
+                <label for="description-input">Description:</label>
+                <textarea id="description-input" rows="4" required></textarea>
+                <label for="links-input">Links (comma-separated):</label>
+                <input type="text" id="links-input">
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
