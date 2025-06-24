@@ -2,7 +2,9 @@ import json
 from flask import Flask, jsonify, request, send_from_directory, render_template_string
 from flask_cors import CORS
 import sqlite3
+from database import create_database
 
+create_database()
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
 
@@ -66,7 +68,7 @@ def handle_cve():
         base_query = "FROM vulnerabilities"
         params = ()
 
-    count_query = f"SELECT COUNT(DISTINCT cve_id) {base_query}"
+    count_query = f"SELECT COUNT(*) {base_query}"
     c.execute(count_query, params)
     total_records = c.fetchone()[0]
     
@@ -99,17 +101,60 @@ def handle_cve():
 def get_total_cve():
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT COUNT(DISTINCT cve_id) FROM vulnerabilities")
+    c.execute("SELECT COUNT(*) FROM vulnerabilities")
     total = c.fetchone()[0]
     conn.close()
     return jsonify({'total': total})
+
+
+@app.route('/api/cve/na/total', methods=['GET'])
+def get_total_na_cve():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM vulnerabilities WHERE cve_id LIKE 'CVE-N/A-%'")
+    total_na = c.fetchone()[0]
+    conn.close()
+    return jsonify({'total_na': total_na})
+
+
+@app.route('/api/cve/na', methods=['GET'])
+def get_na_cve():
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 100, type=int)
+    offset = (page - 1) * limit
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM vulnerabilities WHERE cve_id LIKE 'CVE-N/A-%'")
+    total_records = c.fetchone()[0]
+    total_pages = (total_records + limit - 1) // limit
+
+    c.execute("SELECT * FROM vulnerabilities WHERE cve_id LIKE 'CVE-N/A-%' LIMIT ? OFFSET ?", (limit, offset))
+    na_cve_list = c.fetchall()
+    conn.close()
+
+    results = [{
+        'cve_id': row['cve_id'],
+        'year': row['year'],
+        'description': row['description'],
+        'links': json.loads(row['links']) if row['links'] else []
+    } for row in na_cve_list]
+
+    return jsonify({
+        'total_records': total_records,
+        'page': page,
+        'limit': limit,
+        'data': results
+    })
+
 
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
 
-@app.route('/api/cve/<string:cve_id>', methods=['GET'])
+@app.route('/api/cve/<path:cve_id>', methods=['GET'])
 def get_cve_details(cve_id):
     conn = get_db_connection()
     c = conn.cursor()

@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevPageButton = document.getElementById('prev-page');
     const nextPageButton = document.getElementById('next-page');
     const pageInfo = document.getElementById('page-info');
+
+    const naTableBody = document.querySelector('#na-table tbody');
+    const naPrevPageButton = document.getElementById('na-prev-page');
+    const naNextPageButton = document.getElementById('na-next-page');
+    const naPageInfo = document.getElementById('na-page-info');
     const searchInput = document.getElementById('search-input');
     const addButton = document.getElementById('add-button');
     const addModal = document.getElementById('add-modal');
@@ -16,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalCveLinks = document.getElementById('modal-cve-links');
 
     let currentPage = 1;
+    let currentNaPage = 1;
     const rowsPerPage = 100;
     let currentSearch = '';
 
@@ -187,4 +193,74 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial fetch
     fetchData(currentPage);
     fetchTotalCve();
+    fetchNaData(currentNaPage);
+    fetchTotalNaCve();
+
+    function fetchTotalNaCve() {
+        fetch('/api/cve/na/total')
+            .then(response => response.json())
+            .then(data => {
+                const totalNaElement = document.getElementById('na-counter');
+                if (totalNaElement) {
+                    totalNaElement.textContent = `Total N/A CVEs: ${data.total_na}`;
+                }
+            })
+            .catch(error => console.error('Error fetching total N/A CVE count:', error));
+    }
+
+    function fetchNaData(page) {
+        const url = new URL('/api/cve/na', window.location.origin);
+        url.searchParams.append('page', page);
+        url.searchParams.append('limit', rowsPerPage);
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                displayNaTable(data.data);
+                setupNaPagination(data.total_records, data.page, data.limit);
+            })
+            .catch(error => console.error('Error fetching N/A CVE data:', error));
+    }
+
+    function displayNaTable(data) {
+        naTableBody.innerHTML = '';
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.year}</td>
+                <td>${item.cve_id}</td>
+                <td>${item.description}</td>
+                <td>${item.links.length}</td>
+                <td><button class="details-btn" data-cve-id="${item.cve_id}">Details</button></td>
+            `;
+            naTableBody.appendChild(row);
+        });
+
+        document.querySelectorAll('#na-table .details-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const cveId = this.getAttribute('data-cve-id');
+                fetchCveDetails(cveId);
+            });
+        });
+    }
+
+    function setupNaPagination(totalRecords, page, limit) {
+        const pageCount = Math.ceil(totalRecords / limit);
+        naPageInfo.textContent = `Page ${page} of ${pageCount}`;
+
+        naPrevPageButton.disabled = page === 1;
+        naNextPageButton.disabled = page === pageCount;
+    }
+
+    naPrevPageButton.addEventListener('click', () => {
+        if (currentNaPage > 1) {
+            currentNaPage--;
+            fetchNaData(currentNaPage);
+        }
+    });
+
+    naNextPageButton.addEventListener('click', () => {
+        currentNaPage++;
+        fetchNaData(currentNaPage);
+    });
 });
