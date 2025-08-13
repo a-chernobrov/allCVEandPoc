@@ -39,7 +39,7 @@ def handle_cve():
                     c.execute("UPDATE vulnerabilities SET links = ? WHERE cve_id = ?", (json.dumps(all_links), cve_id))
             else:
                 c.execute(
-                    "INSERT INTO vulnerabilities (cve_id, year, description, links) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO vulnerabilities (cve_id, year, description, links, created_at) VALUES (?, ?, ?, ?, datetime('now'))",
                     (cve_id, year, description, json.dumps(links))
                 )
             conn.commit()
@@ -73,10 +73,9 @@ def handle_cve():
     total_records = c.fetchone()[0]
     
     query = f"""
-        SELECT cve_id, year, description, json_group_array(links) as links
+        SELECT cve_id, year, description, links, created_at
         {base_query}
-        GROUP BY cve_id, year, description
-        ORDER BY year DESC, cve_id DESC
+        ORDER BY created_at DESC, year DESC, cve_id DESC
         LIMIT ? OFFSET ?
     """
     
@@ -93,7 +92,8 @@ def handle_cve():
             'cve_id': row['cve_id'],
             'year': row['year'],
             'description': row['description'],
-            'links_count': len(json.loads(json.loads(row['links'])[0])) if row['links'] and json.loads(row['links']) else 0
+            'links_count': len(json.loads(row['links'])) if row['links'] and row['links'] != 'null' else 0,
+            'created_at': row['created_at']
         } for row in cve_list]
     })
 
@@ -111,7 +111,7 @@ def get_total_cve():
 def get_total_na_cve():
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM vulnerabilities WHERE cve_id LIKE 'CVE-N/A-%'")
+    c.execute("SELECT COUNT(*) FROM vulnerabilities WHERE cve_id IS NULL OR cve_id = '' OR cve_id NOT LIKE 'CVE-%'")
     total_na = c.fetchone()[0]
     conn.close()
     return jsonify({'total_na': total_na})
@@ -126,11 +126,11 @@ def get_na_cve():
     conn = get_db_connection()
     c = conn.cursor()
 
-    c.execute("SELECT COUNT(*) FROM vulnerabilities WHERE cve_id LIKE 'CVE-N/A-%'")
+    c.execute("SELECT COUNT(*) FROM vulnerabilities WHERE cve_id IS NULL OR cve_id = '' OR cve_id NOT LIKE 'CVE-%'")
     total_records = c.fetchone()[0]
     total_pages = (total_records + limit - 1) // limit
 
-    c.execute("SELECT * FROM vulnerabilities WHERE cve_id LIKE 'CVE-N/A-%' LIMIT ? OFFSET ?", (limit, offset))
+    c.execute("SELECT * FROM vulnerabilities WHERE cve_id IS NULL OR cve_id = '' OR cve_id NOT LIKE 'CVE-%' ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset))
     na_cve_list = c.fetchall()
     conn.close()
 
@@ -138,7 +138,8 @@ def get_na_cve():
         'cve_id': row['cve_id'],
         'year': row['year'],
         'description': row['description'],
-        'links': json.loads(row['links']) if row['links'] else []
+        'links': json.loads(row['links']) if row['links'] else [],
+        'created_at': row['created_at']
     } for row in na_cve_list]
 
     return jsonify({

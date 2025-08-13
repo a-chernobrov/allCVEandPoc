@@ -1,5 +1,6 @@
 import sqlite3
 import json
+from datetime import datetime
 
 def create_database():
     conn = sqlite3.connect('cve_data.db')
@@ -10,7 +11,8 @@ def create_database():
             year INTEGER,
             cve_id TEXT UNIQUE,
             description TEXT,
-            links TEXT
+            links TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
@@ -27,9 +29,9 @@ def save_vulnerability(year, cve_id, description, links):
         existing_links = json.loads(result[0]) if result[0] else []
         if set(existing_links) != set(links):
             updated_links = list(set(existing_links + links))
-            c.execute("UPDATE vulnerabilities SET links = ? WHERE cve_id = ?", (json.dumps(updated_links), cve_id))
+            c.execute("UPDATE vulnerabilities SET links = ?, created_at = CURRENT_TIMESTAMP WHERE cve_id = ?", (json.dumps(updated_links), cve_id))
     else:
-        c.execute("INSERT INTO vulnerabilities (year, cve_id, description, links) VALUES (?, ?, ?, ?)",
+        c.execute("INSERT INTO vulnerabilities (year, cve_id, description, links, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
                   (year, cve_id, description, json.dumps(links)))
     
     conn.commit()

@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const naPrevPageButton = document.getElementById('na-prev-page');
     const naNextPageButton = document.getElementById('na-next-page');
     const naPageInfo = document.getElementById('na-page-info');
+    
+    // Check if NA table elements exist before proceeding
+    const naElementsExist = naTableBody && naPrevPageButton && naNextPageButton && naPageInfo;
     const searchInput = document.getElementById('search-input');
     const addButton = document.getElementById('add-button');
     const addModal = document.getElementById('add-modal');
@@ -18,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeButton = document.querySelector('.close-button');
     const modalCveId = document.getElementById('modal-cve-id');
     const detailsContent = document.getElementById('details-content');
-    const modalCveLinks = document.getElementById('modal-cve-links');
+    // const modalCveLinks = document.getElementById('modal-cve-links'); // Element doesn't exist in HTML
 
     let currentPage = 1;
     let currentNaPage = 1;
@@ -58,11 +61,13 @@ document.addEventListener('DOMContentLoaded', function() {
         tableBody.innerHTML = '';
         data.forEach(item => {
             const row = document.createElement('tr');
+            const createdAt = new Date(item.created_at).toLocaleString('ru-RU');
             row.innerHTML = `
                 <td>${item.year}</td>
                 <td>${item.cve_id}</td>
                 <td>${item.description}</td>
                 <td>${item.links_count}</td>
+                <td>${createdAt}</td>
                 <td><button class="details-btn" data-cve-id="${item.cve_id}">Details</button></td>
             `;
             tableBody.appendChild(row);
@@ -193,8 +198,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial fetch
     fetchData(currentPage);
     fetchTotalCve();
-    fetchNaData(currentNaPage);
-    fetchTotalNaCve();
+    if (naElementsExist) {
+        fetchNaData(currentNaPage);
+        fetchTotalNaCve();
+    }
 
     function fetchTotalNaCve() {
         fetch('/api/cve/na/total')
@@ -209,6 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function fetchNaData(page) {
+        if (!naElementsExist) {
+            console.warn('NA elements not found, skipping NA data fetch');
+            return;
+        }
         const url = new URL('/api/cve/na', window.location.origin);
         url.searchParams.append('page', page);
         url.searchParams.append('limit', rowsPerPage);
@@ -223,14 +234,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayNaTable(data) {
+        if (!naTableBody) {
+            console.warn('NA table body element not found');
+            return;
+        }
         naTableBody.innerHTML = '';
         data.forEach(item => {
             const row = document.createElement('tr');
+            const createdAt = new Date(item.created_at).toLocaleString('ru-RU');
             row.innerHTML = `
                 <td>${item.year}</td>
                 <td>${item.cve_id}</td>
                 <td>${item.description}</td>
                 <td>${item.links.length}</td>
+                <td>${createdAt}</td>
                 <td><button class="details-btn" data-cve-id="${item.cve_id}">Details</button></td>
             `;
             naTableBody.appendChild(row);
@@ -245,6 +262,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupNaPagination(totalRecords, page, limit) {
+        if (!naElementsExist) {
+            console.warn('NA pagination elements not found');
+            return;
+        }
         const pageCount = Math.ceil(totalRecords / limit);
         naPageInfo.textContent = `Page ${page} of ${pageCount}`;
 
@@ -252,15 +273,17 @@ document.addEventListener('DOMContentLoaded', function() {
         naNextPageButton.disabled = page === pageCount;
     }
 
-    naPrevPageButton.addEventListener('click', () => {
-        if (currentNaPage > 1) {
-            currentNaPage--;
-            fetchNaData(currentNaPage);
-        }
-    });
+    if (naElementsExist) {
+        naPrevPageButton.addEventListener('click', () => {
+            if (currentNaPage > 1) {
+                currentNaPage--;
+                fetchNaData(currentNaPage);
+            }
+        });
 
-    naNextPageButton.addEventListener('click', () => {
-        currentNaPage++;
-        fetchNaData(currentNaPage);
-    });
+        naNextPageButton.addEventListener('click', () => {
+            currentNaPage++;
+            fetchNaData(currentNaPage);
+        });
+    }
 });
